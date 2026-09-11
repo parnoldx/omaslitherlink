@@ -297,7 +297,7 @@ Item {
                 spacing: 12
 
                 CustomButton {
-                    text: "← Menu"
+                    text: "Menu"
                     fontSize: 14
                     implicitHeight: 38
                     implicitWidth: 90
