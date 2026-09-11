@@ -43,13 +43,13 @@ void SlitherlinkGame::onSecondTick()
     emit scoreChanged();
 }
 
-void SlitherlinkGame::startNewGame(const QString &difficultyKey)
+void SlitherlinkGame::startNewGame(const QString &difficultyKey, int puzzleIndex)
 {
     m_difficulty = Difficulty::fromKey(difficultyKey);
     m_grid.rows = m_difficulty.rows;
     m_grid.cols = m_difficulty.cols;
 
-    const SlitherlinkPuzzle p = PuzzleBank::getPuzzle(m_difficulty.key);
+    const SlitherlinkPuzzle p = PuzzleBank::getPuzzle(m_difficulty.key, puzzleIndex);
     m_clues = p.clues;
     m_solution = p.solution;
     m_edges.fill(0, m_grid.numEdges());

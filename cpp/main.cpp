@@ -101,22 +101,18 @@ int main(int argc, char *argv[])
             root->setProperty("currentView", QStringLiteral("welcome"));
         } else {
             root->setProperty("currentView", QStringLiteral("game"));
-            game.startNewGame(QStringLiteral("easy"));
+            game.startNewGame(QStringLiteral("easy"), 1);
 
-            // Make a few valid moves so the screenshot shows active lines and score
-            int linesPlaced = 0;
-            for (int i = 0; i < game.totalEdges(); ++i) {
-                if (game.solutionRaw()[i] == 1) {
-                    game.toggleEdge(i, 1);
-                    if (++linesPlaced >= 6) break;
-                }
+            // Connect a continuous, strictly valid path along the true solution
+            const int path[] = {1, 2, 3, 4, 5, 6, 63, 13, 70, 20, 79, 87, 34, 94, 40, 93, 85, 25, 84, 92, 100, 45, 99, 37};
+            for (int e : path) {
+                game.toggleEdge(e, 1);
             }
-            // Also auto-cross a 0 if present
+            // Auto-cross 0 clues
             for (int r = 0; r < game.rows(); ++r) {
                 for (int c = 0; c < game.cols(); ++c) {
                     if (game.clues()[r * game.cols() + c].toInt() == 0) {
                         game.clickCellClue(r, c);
-                        break;
                     }
                 }
             }

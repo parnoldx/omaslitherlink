@@ -84,7 +84,7 @@ public:
     void onWon();
 
 public slots:
-    void startNewGame(const QString &difficultyKey);
+    Q_INVOKABLE void startNewGame(const QString &difficultyKey, int puzzleIndex = -1);
     void resumeGame();
     void pauseGame();
     void resumeTimer();
