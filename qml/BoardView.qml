@@ -21,20 +21,50 @@ Item {
 
     function findEdgeAt(px, py) {
         if (game.cols <= 0 || game.rows <= 0) return -1;
-        var r = Math.round(py / cellSize);
-        var c = Math.round(px / cellSize);
-        var distH = Math.abs(py - r * cellSize);
-        var distV = Math.abs(px - c * cellSize);
-        var cellC = Math.floor(px / cellSize);
-        var cellR = Math.floor(py / cellSize);
-        var threshold = Math.max(8, cellSize * 0.35);
 
-        if (distH <= distV && distH < threshold && cellC >= 0 && cellC < game.cols && r >= 0 && r <= game.rows) {
-            return r * game.cols + cellC;
-        } else if (distV < distH && distV < threshold && cellR >= 0 && cellR < game.rows && c >= 0 && c <= game.cols) {
-            return game.numHEdges + cellR * (game.cols + 1) + c;
+        // Generous margin around the board boundary
+        var margin = Math.max(20, cellSize * 0.4);
+        if (px < -margin || px > boardWidth + margin || py < -margin || py > boardHeight + margin) {
+            return -1;
         }
-        return -1;
+
+        // Clamp coordinates to board play area
+        var cpx = Math.max(0, Math.min(boardWidth, px));
+        var cpy = Math.max(0, Math.min(boardHeight, py));
+
+        var cellC = Math.floor(cpx / cellSize);
+        var cellR = Math.floor(cpy / cellSize);
+        if (cellC >= game.cols) cellC = game.cols - 1;
+        if (cellR >= game.rows) cellR = game.rows - 1;
+
+        // Check if user tapped directly on the cell center clue number
+        var clueIdx = cellR * game.cols + cellC;
+        var hasClue = (game.clues && clueIdx >= 0 && clueIdx < game.clues.length && game.clues[clueIdx] >= 0);
+        var centerX = (cellC + 0.5) * cellSize;
+        var centerY = (cellR + 0.5) * cellSize;
+        var clueHitRadius = cellSize * 0.20;
+
+        if (hasClue && Math.abs(cpx - centerX) < clueHitRadius && Math.abs(cpy - centerY) < clueHitRadius) {
+            // User intentionally clicked on the clue number in the dead center
+            return -1;
+        }
+
+        // Otherwise, snap to the nearest of the 4 surrounding edges
+        var distTop = cpy - cellR * cellSize;
+        var distBottom = (cellR + 1) * cellSize - cpy;
+        var distLeft = cpx - cellC * cellSize;
+        var distRight = (cellC + 1) * cellSize - cpx;
+
+        var minDist = Math.min(distTop, distBottom, distLeft, distRight);
+        if (minDist === distTop) {
+            return cellR * game.cols + cellC; // Top H-edge
+        } else if (minDist === distBottom) {
+            return (cellR + 1) * game.cols + cellC; // Bottom H-edge
+        } else if (minDist === distLeft) {
+            return game.numHEdges + cellR * (game.cols + 1) + cellC; // Left V-edge
+        } else {
+            return game.numHEdges + cellR * (game.cols + 1) + (cellC + 1); // Right V-edge
+        }
     }
 
     // Centered Board Container
@@ -132,23 +162,23 @@ Item {
                     property bool isHovered: root.hoveredEdge === edgeIdx
 
                     x: c * root.cellSize
-                    y: r * root.cellSize - 10
+                    y: r * root.cellSize - Math.max(16, Math.floor(root.cellSize * 0.3))
                     width: root.cellSize
-                    height: 20
+                    height: Math.max(32, Math.floor(root.cellSize * 0.6))
 
                     // Line representation
                     Rectangle {
                         anchors.verticalCenter: parent.verticalCenter
                         anchors.left: parent.left
                         anchors.right: parent.right
-                        anchors.leftMargin: 3
-                        anchors.rightMargin: 3
-                        height: hEdgeItem.stateVal === 1 ? Math.max(4, root.cellSize * 0.1) : (hEdgeItem.isCursor || hEdgeItem.isHovered ? 3 : 1)
+                        anchors.leftMargin: 2
+                        anchors.rightMargin: 2
+                        height: hEdgeItem.stateVal === 1 ? Math.max(6, Math.floor(root.cellSize * 0.14)) : (hEdgeItem.isCursor ? Math.max(4, Math.floor(root.cellSize * 0.1)) : (hEdgeItem.isHovered ? Math.max(4, Math.floor(root.cellSize * 0.08)) : 1))
                         radius: height / 2
                         color: {
                             if (hEdgeItem.stateVal === 1) return theme.accent;
                             if (hEdgeItem.isCursor) return theme.yellow;
-                            if (hEdgeItem.isHovered) return Qt.rgba(theme.accent.r, theme.accent.g, theme.accent.b, 0.4);
+                            if (hEdgeItem.isHovered) return Qt.rgba(theme.accent.r, theme.accent.g, theme.accent.b, 0.45);
                             return "transparent";
                         }
                         visible: hEdgeItem.stateVal === 1 || hEdgeItem.isCursor || hEdgeItem.isHovered
@@ -159,7 +189,7 @@ Item {
                         anchors.centerIn: parent
                         visible: hEdgeItem.stateVal === 2
                         text: "×"
-                        font.pixelSize: Math.max(14, Math.floor(root.cellSize * 0.35))
+                        font.pixelSize: Math.max(16, Math.floor(root.cellSize * 0.4))
                         font.bold: true
                         color: theme.red
                     }
@@ -182,9 +212,9 @@ Item {
                     property bool isCursor: game.cursorEdge === edgeIdx
                     property bool isHovered: root.hoveredEdge === edgeIdx
 
-                    x: c * root.cellSize - 10
+                    x: c * root.cellSize - Math.max(16, Math.floor(root.cellSize * 0.3))
                     y: r * root.cellSize
-                    width: 20
+                    width: Math.max(32, Math.floor(root.cellSize * 0.6))
                     height: root.cellSize
 
                     // Line representation
@@ -192,14 +222,14 @@ Item {
                         anchors.horizontalCenter: parent.horizontalCenter
                         anchors.top: parent.top
                         anchors.bottom: parent.bottom
-                        anchors.topMargin: 3
-                        anchors.bottomMargin: 3
-                        width: vEdgeItem.stateVal === 1 ? Math.max(4, root.cellSize * 0.1) : (vEdgeItem.isCursor || vEdgeItem.isHovered ? 3 : 1)
+                        anchors.topMargin: 2
+                        anchors.bottomMargin: 2
+                        width: vEdgeItem.stateVal === 1 ? Math.max(6, Math.floor(root.cellSize * 0.14)) : (vEdgeItem.isCursor ? Math.max(4, Math.floor(root.cellSize * 0.1)) : (vEdgeItem.isHovered ? Math.max(4, Math.floor(root.cellSize * 0.08)) : 1))
                         radius: width / 2
                         color: {
                             if (vEdgeItem.stateVal === 1) return theme.accent;
                             if (vEdgeItem.isCursor) return theme.yellow;
-                            if (vEdgeItem.isHovered) return Qt.rgba(theme.accent.r, theme.accent.g, theme.accent.b, 0.4);
+                            if (vEdgeItem.isHovered) return Qt.rgba(theme.accent.r, theme.accent.g, theme.accent.b, 0.45);
                             return "transparent";
                         }
                         visible: vEdgeItem.stateVal === 1 || vEdgeItem.isCursor || vEdgeItem.isHovered
@@ -210,7 +240,7 @@ Item {
                         anchors.centerIn: parent
                         visible: vEdgeItem.stateVal === 2
                         text: "×"
-                        font.pixelSize: Math.max(14, Math.floor(root.cellSize * 0.35))
+                        font.pixelSize: Math.max(16, Math.floor(root.cellSize * 0.4))
                         font.bold: true
                         color: theme.red
                     }
@@ -227,7 +257,7 @@ Item {
 
                     x: vc * root.cellSize - width / 2
                     y: vr * root.cellSize - height / 2
-                    width: Math.max(6, Math.floor(root.cellSize * 0.14))
+                    width: Math.max(8, Math.floor(root.cellSize * 0.16))
                     height: width
                     radius: width / 2
                     color: theme.foreground
