@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Slitherlink
+GenericName=Slitherlink Game
+Comment=Classic Slitherlink loop puzzle game for Omarchy
+Exec=omarchy-slitherlink
+Icon=org.omarchy.slitherlink
+Terminal=false
+Type=Application
+Categories=Game;LogicGame;
+StartupWMClass=org.omarchy.slitherlink
+Keywords=slitherlink;loopy;loop;puzzle;logic;board;edges;

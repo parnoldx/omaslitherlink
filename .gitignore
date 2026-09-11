@@ -1,0 +1,8 @@
+build/
+*.swp
+*.swo
+*~
+.cache/
+CMakeCache.txt
+CMakeFiles/
+compile_commands.json
