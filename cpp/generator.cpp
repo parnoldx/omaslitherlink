@@ -264,6 +264,201 @@ public:
     }
 };
 
+class DeductiveSolverImpl {
+public:
+    const SlitherlinkGrid &grid;
+    const QVector<int> &clues;
+    std::vector<int8_t> edges; // STATE_UNKNOWN (-1), STATE_CROSS (0), STATE_LINE (1)
+
+    DeductiveSolverImpl(const SlitherlinkGrid &g, const QVector<int> &c)
+        : grid(g), clues(c), edges(g.numEdges(), STATE_UNKNOWN) {}
+
+    bool applyTier1() {
+        bool changed = false;
+        // 1. Cell clues
+        for (int r = 0; r < grid.rows; ++r) {
+            for (int c = 0; c < grid.cols; ++c) {
+                const int clue = clues[r * grid.cols + c];
+                if (clue < 0) continue;
+                const auto ce = grid.cellEdges(r, c);
+                int lines = 0, crosses = 0, unk = 0;
+                for (int e : ce) {
+                    if (edges[e] == STATE_LINE) ++lines;
+                    else if (edges[e] == STATE_CROSS) ++crosses;
+                    else ++unk;
+                }
+                if (lines == clue && unk > 0) {
+                    for (int e : ce) {
+                        if (edges[e] == STATE_UNKNOWN) {
+                            edges[e] = STATE_CROSS;
+                            changed = true;
+                        }
+                    }
+                } else if (lines + unk == clue && unk > 0) {
+                    for (int e : ce) {
+                        if (edges[e] == STATE_UNKNOWN) {
+                            edges[e] = STATE_LINE;
+                            changed = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Vertex degrees
+        for (int vr = 0; vr <= grid.rows; ++vr) {
+            for (int vc = 0; vc <= grid.cols; ++vc) {
+                const auto ve = grid.vertEdges(vr, vc);
+                int lines = 0, crosses = 0, unk = 0;
+                for (int e : ve) {
+                    if (edges[e] == STATE_LINE) ++lines;
+                    else if (edges[e] == STATE_CROSS) ++crosses;
+                    else ++unk;
+                }
+                if (lines == 2 && unk > 0) {
+                    for (int e : ve) {
+                        if (edges[e] == STATE_UNKNOWN) {
+                            edges[e] = STATE_CROSS;
+                            changed = true;
+                        }
+                    }
+                } else if (lines == 1 && unk == 1) {
+                    for (int e : ve) {
+                        if (edges[e] == STATE_UNKNOWN) {
+                            edges[e] = STATE_LINE;
+                            changed = true;
+                        }
+                    }
+                } else if (lines == 0 && unk == 1) {
+                    for (int e : ve) {
+                        if (edges[e] == STATE_UNKNOWN) {
+                            edges[e] = STATE_CROSS;
+                            changed = true;
+                        }
+                    }
+                }
+            }
+        }
+        return changed;
+    }
+
+    bool applyTier2() {
+        bool changed = false;
+
+        // Corner 3s:
+        auto checkCorner3 = [&](int r, int c, int hEdgeIdx, int vEdgeIdx) {
+            if (clues[r * grid.cols + c] == 3) {
+                if (edges[hEdgeIdx] == STATE_UNKNOWN) { edges[hEdgeIdx] = STATE_LINE; changed = true; }
+                if (edges[vEdgeIdx] == STATE_UNKNOWN) { edges[vEdgeIdx] = STATE_LINE; changed = true; }
+            }
+        };
+        checkCorner3(0, 0, grid.hEdge(0, 0), grid.vEdge(0, 0));
+        checkCorner3(0, grid.cols - 1, grid.hEdge(0, grid.cols - 1), grid.vEdge(0, grid.cols));
+        checkCorner3(grid.rows - 1, 0, grid.hEdge(grid.rows, 0), grid.vEdge(grid.rows - 1, 0));
+        checkCorner3(grid.rows - 1, grid.cols - 1, grid.hEdge(grid.rows, grid.cols - 1), grid.vEdge(grid.rows - 1, grid.cols));
+
+        // Adjacent 3-3:
+        for (int r = 0; r < grid.rows; ++r) {
+            for (int c = 0; c < grid.cols; ++c) {
+                if (clues[r * grid.cols + c] != 3) continue;
+
+                // Horizontal 3-3:
+                if (c + 1 < grid.cols && clues[r * grid.cols + (c + 1)] == 3) {
+                    int shared = grid.vEdge(r, c + 1);
+                    if (edges[shared] == STATE_UNKNOWN) { edges[shared] = STATE_LINE; changed = true; }
+                    int leftE = grid.vEdge(r, c);
+                    int rightE = grid.vEdge(r, c + 2);
+                    if (edges[leftE] == STATE_UNKNOWN) { edges[leftE] = STATE_LINE; changed = true; }
+                    if (edges[rightE] == STATE_UNKNOWN) { edges[rightE] = STATE_LINE; changed = true; }
+                }
+
+                // Vertical 3-3:
+                if (r + 1 < grid.rows && clues[(r + 1) * grid.cols + c] == 3) {
+                    int shared = grid.hEdge(r + 1, c);
+                    if (edges[shared] == STATE_UNKNOWN) { edges[shared] = STATE_LINE; changed = true; }
+                    int topE = grid.hEdge(r, c);
+                    int botE = grid.hEdge(r + 2, c);
+                    if (edges[topE] == STATE_UNKNOWN) { edges[topE] = STATE_LINE; changed = true; }
+                    if (edges[botE] == STATE_UNKNOWN) { edges[botE] = STATE_LINE; changed = true; }
+                }
+
+                // 3 next to 0:
+                if (r > 0 && clues[(r - 1) * grid.cols + c] == 0) {
+                    int opp = grid.hEdge(r + 1, c);
+                    if (edges[opp] == STATE_UNKNOWN) { edges[opp] = STATE_LINE; changed = true; }
+                }
+                if (r + 1 < grid.rows && clues[(r + 1) * grid.cols + c] == 0) {
+                    int opp = grid.hEdge(r, c);
+                    if (edges[opp] == STATE_UNKNOWN) { edges[opp] = STATE_LINE; changed = true; }
+                }
+                if (c > 0 && clues[r * grid.cols + (c - 1)] == 0) {
+                    int opp = grid.vEdge(r, c + 1);
+                    if (edges[opp] == STATE_UNKNOWN) { edges[opp] = STATE_LINE; changed = true; }
+                }
+                if (c + 1 < grid.cols && clues[r * grid.cols + (c + 1)] == 0) {
+                    int opp = grid.vEdge(r, c);
+                    if (edges[opp] == STATE_UNKNOWN) { edges[opp] = STATE_LINE; changed = true; }
+                }
+            }
+        }
+        return changed;
+    }
+
+    bool applyTier3() {
+        bool changed = false;
+        DSU dsu(grid.numVerts());
+        int totalLines = 0;
+        for (int e = 0; e < grid.numEdges(); ++e) {
+            if (edges[e] == STATE_LINE) {
+                ++totalLines;
+                auto [u, v] = grid.edgeEndpoints(e);
+                dsu.unite(u, v);
+            }
+        }
+
+        for (int e = 0; e < grid.numEdges(); ++e) {
+            if (edges[e] == STATE_UNKNOWN) {
+                auto [u, v] = grid.edgeEndpoints(e);
+                if (dsu.find(u) == dsu.find(v)) {
+                    bool complete = true;
+                    for (int r = 0; r < grid.rows; ++r) {
+                        for (int c = 0; c < grid.cols; ++c) {
+                            int clue = clues[r * grid.cols + c];
+                            if (clue < 0) continue;
+                            int l = 0;
+                            for (int ce : grid.cellEdges(r, c)) {
+                                if (edges[ce] == STATE_LINE || ce == e) ++l;
+                            }
+                            if (l != clue) { complete = false; break; }
+                        }
+                        if (!complete) break;
+                    }
+                    if (!complete || totalLines + 1 < 4) {
+                        edges[e] = STATE_CROSS;
+                        changed = true;
+                    }
+                }
+            }
+        }
+        return changed;
+    }
+
+    bool solve(int maxTier) {
+        bool changed = true;
+        while (changed) {
+            changed = false;
+            if (applyTier1()) { changed = true; continue; }
+            if (maxTier >= SlitherlinkEngine::Tier2_Patterns && applyTier2()) { changed = true; continue; }
+            if (maxTier >= SlitherlinkEngine::Tier3_Global && applyTier3()) { changed = true; continue; }
+        }
+
+        for (int8_t s : edges) {
+            if (s == STATE_UNKNOWN) return false;
+        }
+        return true;
+    }
+};
+
 bool isValidLoopInterior(int R, int C, const std::vector<bool> &inS) {
     auto inBounds = [&](int r, int c) { return r >= 0 && r < R && c >= 0 && c < C; };
     auto idx = [&](int r, int c) { return r * C + c; };
@@ -380,6 +575,19 @@ bool SlitherlinkEngine::isWinState(const SlitherlinkGrid &grid, const QVector<in
     return true;
 }
 
+bool SlitherlinkEngine::solveDeductive(const SlitherlinkGrid &grid, const QVector<int> &clues, int maxTier, QVector<int> *outEdges)
+{
+    DeductiveSolverImpl solver(grid, clues);
+    bool ok = solver.solve(maxTier);
+    if (outEdges) {
+        outEdges->resize(grid.numEdges());
+        for (int i = 0; i < grid.numEdges(); ++i) {
+            (*outEdges)[i] = (solver.edges[i] == STATE_LINE) ? 1 : (solver.edges[i] == STATE_CROSS ? 2 : 0);
+        }
+    }
+    return ok;
+}
+
 SlitherlinkPuzzle SlitherlinkEngine::generatePuzzle(const Difficulty &difficulty, unsigned int seed)
 {
     const int R = difficulty.rows;
@@ -452,22 +660,65 @@ SlitherlinkPuzzle SlitherlinkEngine::generatePuzzle(const Difficulty &difficulty
         }
     }
 
-    // 2. Reduce clues while preserving uniqueness
-    std::vector<int> clueIndices(R * C);
-    for (int i = 0; i < R * C; ++i) clueIndices[i] = i;
-    std::shuffle(clueIndices.begin(), clueIndices.end(), rng);
+    // 2. Reduce clues with 180° rotational symmetry and deduction tier grading
+    std::vector<std::pair<int, int>> cluePairs;
+    std::vector<bool> paired(R * C, false);
+    for (int r = 0; r < R; ++r) {
+        for (int c = 0; c < C; ++c) {
+            int idx1 = r * C + c;
+            if (paired[idx1]) continue;
+            int sr = R - 1 - r;
+            int sc = C - 1 - c;
+            int idx2 = sr * C + sc;
+            cluePairs.push_back({idx1, idx2});
+            paired[idx1] = true;
+            paired[idx2] = true;
+        }
+    }
+    std::shuffle(cluePairs.begin(), cluePairs.end(), rng);
 
     int currentClues = R * C;
-    const int targetClues = qMax(8, (R * C) * 42 / 100);
+    int targetClues = qMax(8, (R * C) * 44 / 100);
+    int targetTier = Tier3_Global;
+    if (R <= 7 && C <= 7) {
+        targetTier = Tier2_Patterns;
+        targetClues = 22; // ~45% for 7x7 (Easy)
+    } else if (R <= 10 && C <= 10) {
+        targetTier = Tier3_Global;
+        targetClues = 45; // ~45% for 10x10 (Medium)
+    } else if (R <= 15 && C <= 15) {
+        targetTier = Tier3_Global;
+        targetClues = 92; // ~41% for 15x15 (Hard)
+    } else {
+        targetTier = Tier3_Global;
+        targetClues = (R * C) * 40 / 100; // ~40% for 20x20 (Master: really hard)
+    }
 
-    for (int idx : clueIndices) {
+    for (const auto &pair : cluePairs) {
         if (currentClues <= targetClues) break;
-        const int orig = clues[idx];
-        clues[idx] = -1;
-        if (solveCount(grid, clues, 2) != 1) {
-            clues[idx] = orig;
+        int i = pair.first;
+        int j = pair.second;
+        int origI = clues[i];
+        int origJ = clues[j];
+        clues[i] = -1;
+        clues[j] = -1;
+
+        bool ok = false;
+        if (solveCount(grid, clues, 2) == 1) {
+            if (targetTier == Tier1_Local) {
+                ok = solveDeductive(grid, clues, Tier1_Local);
+            } else if (targetTier == Tier2_Patterns) {
+                ok = solveDeductive(grid, clues, Tier2_Patterns);
+            } else {
+                ok = solveDeductive(grid, clues, Tier3_Global);
+            }
+        }
+
+        if (ok) {
+            currentClues -= (i == j ? 1 : 2);
         } else {
-            --currentClues;
+            clues[i] = origI;
+            clues[j] = origJ;
         }
     }
 

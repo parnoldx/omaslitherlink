@@ -14,42 +14,27 @@ Item {
     readonly property int cellSize: Math.max(26, Math.floor(availableSize / (maxDim > 0 ? maxDim : 5)))
     readonly property int boardWidth: cellSize * game.cols
     readonly property int boardHeight: cellSize * game.rows
+    readonly property int visibleLineWidth: Math.max(6, Math.floor(cellSize * 0.14))
+    readonly property int edgeCorridor: Math.max(10, Math.round(visibleLineWidth * 1.2))
 
+    property bool keyboardMode: false
     property int hoveredEdge: -1
     property int dragMode: 0 // 0 none, 1 line, 2 cross
     property int lastDraggedEdge: -1
 
-    function findEdgeAt(px, py) {
+    function findClosestEdgeAt(px, py) {
         if (game.cols <= 0 || game.rows <= 0) return -1;
-
-        // Generous margin around the board boundary
         var margin = Math.max(20, cellSize * 0.4);
         if (px < -margin || px > boardWidth + margin || py < -margin || py > boardHeight + margin) {
             return -1;
         }
 
-        // Clamp coordinates to board play area
         var cpx = Math.max(0, Math.min(boardWidth, px));
         var cpy = Math.max(0, Math.min(boardHeight, py));
 
-        var cellC = Math.floor(cpx / cellSize);
-        var cellR = Math.floor(cpy / cellSize);
-        if (cellC >= game.cols) cellC = game.cols - 1;
-        if (cellR >= game.rows) cellR = game.rows - 1;
+        var cellC = Math.min(game.cols - 1, Math.max(0, Math.floor(cpx / cellSize)));
+        var cellR = Math.min(game.rows - 1, Math.max(0, Math.floor(cpy / cellSize)));
 
-        // Check if user tapped directly on the cell center clue number
-        var clueIdx = cellR * game.cols + cellC;
-        var hasClue = (game.clues && clueIdx >= 0 && clueIdx < game.clues.length && game.clues[clueIdx] >= 0);
-        var centerX = (cellC + 0.5) * cellSize;
-        var centerY = (cellR + 0.5) * cellSize;
-        var clueHitRadius = cellSize * 0.20;
-
-        if (hasClue && Math.abs(cpx - centerX) < clueHitRadius && Math.abs(cpy - centerY) < clueHitRadius) {
-            // User intentionally clicked on the clue number in the dead center
-            return -1;
-        }
-
-        // Otherwise, snap to the nearest of the 4 surrounding edges
         var distTop = cpy - cellR * cellSize;
         var distBottom = (cellR + 1) * cellSize - cpy;
         var distLeft = cpx - cellC * cellSize;
@@ -65,6 +50,59 @@ Item {
         } else {
             return game.numHEdges + cellR * (game.cols + 1) + (cellC + 1); // Right V-edge
         }
+    }
+
+    function findEdgeAt(px, py) {
+        if (game.cols <= 0 || game.rows <= 0) return -1;
+        var margin = Math.max(16, cellSize * 0.35);
+        if (px < -margin || px > boardWidth + margin || py < -margin || py > boardHeight + margin) {
+            return -1;
+        }
+
+        var cpx = Math.max(0, Math.min(boardWidth, px));
+        var cpy = Math.max(0, Math.min(boardHeight, py));
+
+        var cellC = Math.min(game.cols - 1, Math.max(0, Math.floor(cpx / cellSize)));
+        var cellR = Math.min(game.rows - 1, Math.max(0, Math.floor(cpy / cellSize)));
+
+        // If inside the cell bounds, check if this cell has clue 0
+        var clueIdx = cellR * game.cols + cellC;
+        var clueVal = (game.clues && clueIdx >= 0 && clueIdx < game.clues.length) ? game.clues[clueIdx] : -1;
+
+        var distTop = cpy - cellR * cellSize;
+        var distBottom = (cellR + 1) * cellSize - cpy;
+        var distLeft = cpx - cellC * cellSize;
+        var distRight = (cellC + 1) * cellSize - cpx;
+
+        var minDist = Math.min(distTop, distBottom, distLeft, distRight);
+        var edgeCorridor = root.edgeCorridor;
+
+        // Only target a line if within the edge corridor! In cell interior, no line is targeted or highlighted
+        if (minDist > edgeCorridor) {
+            return -1;
+        }
+
+        // If current cell has clue 0, never target or highlight any of its borders as a line!
+        if (clueVal === 0) {
+            return -1;
+        }
+
+        var targetEdge = -1;
+        if (minDist === distTop) {
+            targetEdge = cellR * game.cols + cellC; // Top H-edge
+            if (cellR > 0 && game.clues && game.clues[(cellR - 1) * game.cols + cellC] === 0) return -1;
+        } else if (minDist === distBottom) {
+            targetEdge = (cellR + 1) * game.cols + cellC; // Bottom H-edge
+            if (cellR < game.rows - 1 && game.clues && game.clues[(cellR + 1) * game.cols + cellC] === 0) return -1;
+        } else if (minDist === distLeft) {
+            targetEdge = game.numHEdges + cellR * (game.cols + 1) + cellC; // Left V-edge
+            if (cellC > 0 && game.clues && game.clues[cellR * game.cols + (cellC - 1)] === 0) return -1;
+        } else {
+            targetEdge = game.numHEdges + cellR * (game.cols + 1) + (cellC + 1); // Right V-edge
+            if (cellC < game.cols - 1 && game.clues && game.clues[cellR * game.cols + (cellC + 1)] === 0) return -1;
+        }
+
+        return targetEdge;
     }
 
     // Centered Board Container
@@ -158,7 +196,7 @@ Item {
                         var list = game.edges;
                         return (edgeIdx >= 0 && edgeIdx < list.length) ? list[edgeIdx] : 0;
                     }
-                    property bool isCursor: game.cursorEdge === edgeIdx
+                    property bool isCursor: root.keyboardMode && (game.cursorEdge === edgeIdx)
                     property bool isHovered: root.hoveredEdge === edgeIdx
 
                     x: c * root.cellSize
@@ -173,7 +211,7 @@ Item {
                         anchors.right: parent.right
                         anchors.leftMargin: 2
                         anchors.rightMargin: 2
-                        height: hEdgeItem.stateVal === 1 ? Math.max(6, Math.floor(root.cellSize * 0.14)) : (hEdgeItem.isCursor ? Math.max(4, Math.floor(root.cellSize * 0.1)) : (hEdgeItem.isHovered ? Math.max(4, Math.floor(root.cellSize * 0.08)) : 1))
+                        height: hEdgeItem.stateVal === 1 ? root.visibleLineWidth : (hEdgeItem.isCursor ? Math.max(4, Math.floor(root.cellSize * 0.1)) : (hEdgeItem.isHovered ? Math.max(4, Math.floor(root.cellSize * 0.08)) : 1))
                         radius: height / 2
                         color: {
                             if (hEdgeItem.stateVal === 1) return theme.accent;
@@ -209,7 +247,7 @@ Item {
                         var list = game.edges;
                         return (edgeIdx >= 0 && edgeIdx < list.length) ? list[edgeIdx] : 0;
                     }
-                    property bool isCursor: game.cursorEdge === edgeIdx
+                    property bool isCursor: root.keyboardMode && (game.cursorEdge === edgeIdx)
                     property bool isHovered: root.hoveredEdge === edgeIdx
 
                     x: c * root.cellSize - Math.max(16, Math.floor(root.cellSize * 0.3))
@@ -224,7 +262,7 @@ Item {
                         anchors.bottom: parent.bottom
                         anchors.topMargin: 2
                         anchors.bottomMargin: 2
-                        width: vEdgeItem.stateVal === 1 ? Math.max(6, Math.floor(root.cellSize * 0.14)) : (vEdgeItem.isCursor ? Math.max(4, Math.floor(root.cellSize * 0.1)) : (vEdgeItem.isHovered ? Math.max(4, Math.floor(root.cellSize * 0.08)) : 1))
+                        width: vEdgeItem.stateVal === 1 ? root.visibleLineWidth : (vEdgeItem.isCursor ? Math.max(4, Math.floor(root.cellSize * 0.1)) : (vEdgeItem.isHovered ? Math.max(4, Math.floor(root.cellSize * 0.08)) : 1))
                         radius: width / 2
                         color: {
                             if (vEdgeItem.stateVal === 1) return theme.accent;
@@ -274,11 +312,9 @@ Item {
                 cursorShape: Qt.PointingHandCursor
 
                 onPositionChanged: function(mouse) {
-                    var edge = root.findEdgeAt(mouse.x, mouse.y);
+                    root.keyboardMode = false;
+                    var edge = (root.dragMode === 2) ? root.findClosestEdgeAt(mouse.x, mouse.y) : root.findEdgeAt(mouse.x, mouse.y);
                     root.hoveredEdge = edge;
-                    if (edge >= 0) {
-                        game.selectEdge(edge);
-                    }
 
                     // If dragging with button held down:
                     if (root.dragMode > 0 && edge >= 0 && edge !== root.lastDraggedEdge) {
@@ -289,18 +325,39 @@ Item {
 
                 onPressed: function(mouse) {
                     root.forceActiveFocus();
+                    root.keyboardMode = false;
+                    var cr = Math.floor(mouse.y / root.cellSize);
+                    var cc = Math.floor(mouse.x / root.cellSize);
+                    var isInsideBoard = cr >= 0 && cr < game.rows && cc >= 0 && cc < game.cols;
+                    var clueIdx = isInsideBoard ? (cr * game.cols + cc) : -1;
+                    var clueVal = (isInsideBoard && game.clues && clueIdx < game.clues.length) ? game.clues[clueIdx] : -1;
+
+                    // If clicking anywhere inside a 0 cell (left or right click), auto-cross all 4 edges!
+                    if (isInsideBoard && clueVal === 0) {
+                        game.clickCellClue(cr, cc);
+                        return;
+                    }
+
+                    if (mouse.button === Qt.RightButton) {
+                        // Right-clicks target the closest edge to place/toggle a Cross (pencil mark)
+                        var edge = root.findClosestEdgeAt(mouse.x, mouse.y);
+                        if (edge >= 0) {
+                            root.dragMode = 2;
+                            root.lastDraggedEdge = edge;
+                            game.toggleEdge(edge, 2);
+                        }
+                        return;
+                    }
+
+                    // Left-click:
                     var edge = root.findEdgeAt(mouse.x, mouse.y);
                     if (edge >= 0) {
-                        root.dragMode = (mouse.button === Qt.RightButton) ? 2 : 1;
+                        root.dragMode = 1;
                         root.lastDraggedEdge = edge;
-                        game.toggleEdge(edge, root.dragMode);
-                    } else {
-                        // Click inside cell
-                        var cr = Math.floor(mouse.y / root.cellSize);
-                        var cc = Math.floor(mouse.x / root.cellSize);
-                        if (cr >= 0 && cr < game.rows && cc >= 0 && cc < game.cols) {
-                            game.clickCellClue(cr, cc);
-                        }
+                        game.toggleEdge(edge, 1);
+                    } else if (isInsideBoard) {
+                        // Click inside cell interior - auto-crosses if satisfied clue, never triggers a fail!
+                        game.clickCellClue(cr, cc);
                     }
                 }
 
@@ -377,21 +434,25 @@ Item {
 
         // Arrow and Vim navigation
         if (event.key === Qt.Key_Up || event.key === Qt.Key_K) {
+            root.keyboardMode = true;
             game.moveCursor(-1, 0);
             event.accepted = true;
             return;
         }
         if (event.key === Qt.Key_Down || event.key === Qt.Key_J) {
+            root.keyboardMode = true;
             game.moveCursor(1, 0);
             event.accepted = true;
             return;
         }
         if (event.key === Qt.Key_Left || event.key === Qt.Key_H) {
+            root.keyboardMode = true;
             game.moveCursor(0, -1);
             event.accepted = true;
             return;
         }
         if (event.key === Qt.Key_Right || event.key === Qt.Key_L) {
+            root.keyboardMode = true;
             game.moveCursor(0, 1);
             event.accepted = true;
             return;
@@ -399,6 +460,7 @@ Item {
 
         // Space / Return: toggle Line
         if (event.key === Qt.Key_Space || event.key === Qt.Key_Return) {
+            root.keyboardMode = true;
             game.toggleEdge(game.cursorEdge, 1);
             event.accepted = true;
             return;
@@ -406,6 +468,7 @@ Item {
 
         // X / Backspace: toggle Cross
         if (event.key === Qt.Key_X || event.key === Qt.Key_Backspace) {
+            root.keyboardMode = true;
             game.toggleEdge(game.cursorEdge, 2);
             event.accepted = true;
             return;
@@ -413,14 +476,8 @@ Item {
 
         // C / Delete: clear edge
         if (event.key === Qt.Key_C || event.key === Qt.Key_Delete) {
+            root.keyboardMode = true;
             game.toggleEdge(game.cursorEdge, 0);
-            event.accepted = true;
-            return;
-        }
-
-        // Undo
-        if (event.key === Qt.Key_U || (event.key === Qt.Key_Z && (event.modifiers & Qt.ControlModifier))) {
-            game.undo();
             event.accepted = true;
             return;
         }

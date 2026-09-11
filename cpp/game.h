@@ -10,11 +10,6 @@
 #include <QVariantList>
 #include <QVector>
 
-struct SlitherlinkHistoryEntry {
-    int edgeIdx = -1;
-    int prevState = 0;
-    int pointsAdded = 0;
-};
 
 class SlitherlinkGame : public QObject {
     Q_OBJECT
@@ -37,12 +32,13 @@ class SlitherlinkGame : public QObject {
     Q_PROPERTY(bool inGame READ inGame NOTIFY gameStateChanged)
     Q_PROPERTY(bool canResume READ canResume NOTIFY canResumeChanged)
     Q_PROPERTY(int highscore READ highscore NOTIFY gameStateChanged)
+    Q_PROPERTY(int basePoints READ basePoints NOTIFY gameStateChanged)
+    Q_PROPERTY(int parTime READ parTime NOTIFY gameStateChanged)
+    Q_PROPERTY(int timeBonus READ timeBonus NOTIFY timeChanged)
+    Q_PROPERTY(int mistakeBonus READ mistakeBonus NOTIFY failsChanged)
+    Q_PROPERTY(QString formattedParTime READ formattedParTime NOTIFY gameStateChanged)
 
 public:
-    static constexpr int TIME_FACTOR_REDUCE = 34;
-    static constexpr int POINTS_LINE = 10;
-    static constexpr int POINTS_CELL_COMPLETE = 25;
-
     explicit SlitherlinkGame(StorageManager *storage = nullptr, QObject *parent = nullptr);
     ~SlitherlinkGame() override;
 
@@ -55,7 +51,7 @@ public:
     QVariantList clues() const;
     QVariantList edges() const;
     int cursorEdge() const { return m_cursorEdge; }
-    int points() const { return m_points; }
+    int points() const;
     int factor() const { return m_factor; }
     int fails() const { return m_fails; }
     int time() const { return m_time; }
@@ -66,6 +62,13 @@ public:
     bool inGame() const { return m_inGame; }
     bool canResume() const;
     int highscore() const;
+
+    int basePoints() const;
+    int parTime() const;
+    int timeBonus() const;
+    int mistakeBonus() const;
+    int calculateScore(int timeSeconds, int failsCount) const;
+    QString formattedParTime() const;
 
     bool is_finished() const;
 
@@ -95,7 +98,6 @@ public slots:
     void clickCellClue(int row, int col);
     void selectEdge(int edgeIdx);
     void moveCursor(int dRow, int dCol);
-    void undo();
     bool isFinished() const;
     int getHighscoreFor(const QString &diffKey) const;
 
@@ -112,7 +114,7 @@ signals:
     void edgeFlash(int edgeIdx, bool isCorrect);
     void cellFlash(int row, int col, bool isCorrect);
     void cellCompleted(int row, int col);
-    void gameWon(int points, int fails, int highscore, bool isNewRecord);
+    void gameWon(int points, int fails, int highscore, bool isNewRecord, int basePoints, int timeBonus, int mistakeBonus, const QString &parTimeStr);
 
 private:
     void checkCellCompletions(int edgeIdx);
@@ -134,6 +136,5 @@ private:
     bool m_isPaused = false;
     bool m_inGame = false;
 
-    QVector<SlitherlinkHistoryEntry> m_history;
     QTimer m_timer;
 };

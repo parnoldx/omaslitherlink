@@ -6,8 +6,8 @@
 struct Difficulty {
     QString key;
     QString label;
-    int rows = 5;
-    int cols = 5;
+    int rows = 7;
+    int cols = 7;
     int factor = 28;
     QString clueHint;
     QString desc;

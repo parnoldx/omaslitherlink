@@ -3,37 +3,37 @@
 static const Difficulty s_easy = {
     QStringLiteral("simple"),
     QStringLiteral("Easy"),
-    5, 5,
-    28,
-    QStringLiteral("~12 clues (5×5)"),
-    QStringLiteral("Relaxed 5×5 grid, great for quick sessions")
+    7, 7,
+    30,
+    QStringLiteral("~22 clues (7×7)"),
+    QStringLiteral("Relaxed 7×7 grid, accessible deductions")
 };
 
 static const Difficulty s_medium = {
     QStringLiteral("medium"),
     QStringLiteral("Medium"),
-    7, 7,
-    56,
-    QStringLiteral("~22 clues (7×7)"),
-    QStringLiteral("Balanced 7×7 challenge for regular players")
+    10, 10,
+    35,
+    QStringLiteral("~45 clues (10×10)"),
+    QStringLiteral("Balanced 10×10 challenge with intricate patterns")
 };
 
 static const Difficulty s_hard = {
     QStringLiteral("hard"),
     QStringLiteral("Hard"),
-    10, 10,
-    112,
-    QStringLiteral("~45 clues (10×10)"),
-    QStringLiteral("10×10 grid with intricate deduction patterns")
+    15, 15,
+    45,
+    QStringLiteral("~95 clues (15×15)"),
+    QStringLiteral("Expansive 15×15 grid demanding global loop analysis")
 };
 
 static const Difficulty s_master = {
     QStringLiteral("master"),
     QStringLiteral("Master"),
-    15, 15,
-    156,
-    QStringLiteral("~90 clues (15×15)"),
-    QStringLiteral("Expansive 15×15 puzzle for loop masters")
+    20, 20,
+    60,
+    QStringLiteral("~160 clues (20×20)"),
+    QStringLiteral("Epic 20×20 grid for grandmasters; really hard")
 };
 
 static const std::array<Difficulty, 4> s_all = {

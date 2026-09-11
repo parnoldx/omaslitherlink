@@ -87,27 +87,37 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    // Docs screenshot: OMARCHY_SLITHERLINK_SCREENSHOT=/path/ingame.png
-    const QString shotPath = QString::fromLocal8Bit(qgetenv("OMARCHY_SLITHERLINK_SCREENSHOT"));
+    // Docs screenshot: OMARCHY_SLITHERLINK_SCREENSHOT=/path/ingame.png or 1
+    QString shotPath = QString::fromLocal8Bit(qgetenv("OMARCHY_SLITHERLINK_SCREENSHOT"));
+    if (shotPath == QStringLiteral("1") || shotPath == QStringLiteral("true")) {
+        shotPath = appDir + QStringLiteral("/../pictures/ingame.png");
+    }
     if (!shotPath.isEmpty()) {
         QObject *root = engine.rootObjects().constFirst();
-        root->setProperty("currentView", QStringLiteral("game"));
-        game.startNewGame(QStringLiteral("easy"));
+        const QString shotView = QString::fromLocal8Bit(qgetenv("OMARCHY_SLITHERLINK_SCREENSHOT_VIEW"));
+        if (shotView == QStringLiteral("tutorial")) {
+            root->setProperty("currentView", QStringLiteral("tutorial"));
+        } else if (shotView == QStringLiteral("welcome")) {
+            root->setProperty("currentView", QStringLiteral("welcome"));
+        } else {
+            root->setProperty("currentView", QStringLiteral("game"));
+            game.startNewGame(QStringLiteral("easy"));
 
-        // Make a few valid moves so the screenshot shows active lines and score
-        int linesPlaced = 0;
-        for (int i = 0; i < game.totalEdges(); ++i) {
-            if (game.solutionRaw()[i] == 1) {
-                game.toggleEdge(i, 1);
-                if (++linesPlaced >= 6) break;
+            // Make a few valid moves so the screenshot shows active lines and score
+            int linesPlaced = 0;
+            for (int i = 0; i < game.totalEdges(); ++i) {
+                if (game.solutionRaw()[i] == 1) {
+                    game.toggleEdge(i, 1);
+                    if (++linesPlaced >= 6) break;
+                }
             }
-        }
-        // Also auto-cross a 0 if present
-        for (int r = 0; r < game.rows(); ++r) {
-            for (int c = 0; c < game.cols(); ++c) {
-                if (game.clues()[r * game.cols() + c].toInt() == 0) {
-                    game.clickCellClue(r, c);
-                    break;
+            // Also auto-cross a 0 if present
+            for (int r = 0; r < game.rows(); ++r) {
+                for (int c = 0; c < game.cols(); ++c) {
+                    if (game.clues()[r * game.cols() + c].toInt() == 0) {
+                        game.clickCellClue(r, c);
+                        break;
+                    }
                 }
             }
         }

@@ -11,6 +11,10 @@ Item {
     property int currentHighscore: 0
     property bool isRecord: false
     property string finalTime: "00:00"
+    property int basePoints: 0
+    property int timeBonus: 0
+    property int mistakeBonus: 0
+    property string parTimeStr: "02:00"
 
     signal playAgain()
     signal returnToMenu()
@@ -126,32 +130,41 @@ Item {
                     Text { text: "Difficulty:"; color: theme.muted; font.pixelSize: 13 }
                     Text { text: game.difficultyLabel; color: theme.foreground; font.bold: true; font.pixelSize: 13; Layout.alignment: Qt.AlignRight }
 
-                    Text { text: "Time:"; color: theme.muted; font.pixelSize: 13 }
-                    Text { text: root.finalTime; color: theme.foreground; font.bold: true; font.family: "Monospace"; font.pixelSize: 13; Layout.alignment: Qt.AlignRight }
+                    Text { text: "Time / Par:"; color: theme.muted; font.pixelSize: 13 }
+                    Text { text: root.finalTime + " (Par " + root.parTimeStr + ")"; color: theme.foreground; font.bold: true; font.family: "Monospace"; font.pixelSize: 13; Layout.alignment: Qt.AlignRight }
 
-                    Text { text: "Errors:"; color: theme.muted; font.pixelSize: 13 }
+                    Text { text: "Base Points:"; color: theme.muted; font.pixelSize: 13 }
+                    Text { text: "+" + root.basePoints.toLocaleString(); color: theme.foreground; font.bold: true; font.pixelSize: 13; Layout.alignment: Qt.AlignRight }
+
+                    Text { text: "Speed Bonus:"; color: theme.muted; font.pixelSize: 13 }
+                    Text { text: "+" + root.timeBonus.toLocaleString(); color: root.timeBonus > 0 ? theme.cyan : theme.muted; font.bold: true; font.pixelSize: 13; Layout.alignment: Qt.AlignRight }
+
+                    Text { text: "Accuracy Rating:"; color: theme.muted; font.pixelSize: 13 }
                     Text {
                         text: {
-                            if (root.finalFails === 0) return "None! Perfect!";
-                            if (root.finalFails <= 3) {
-                                var s = "";
-                                for (var i = 0; i < root.finalFails; i++) s += "X ";
-                                return s.trim();
-                            }
-                            return "Broken series (" + root.finalFails + ")";
+                            if (root.mistakeBonus > 0) return "+" + root.mistakeBonus.toLocaleString() + " (" + (root.finalFails === 0 ? "★ Flawless!" : root.finalFails + " fail") + ")";
+                            if (root.mistakeBonus === 0) return "+0 (3 fails)";
+                            return root.mistakeBonus.toLocaleString() + " (" + root.finalFails + " fails)";
                         }
-                        color: root.finalFails === 0 ? theme.green : (root.finalFails <= 3 ? theme.orange : theme.red)
+                        color: root.mistakeBonus > 0 ? theme.green : (root.mistakeBonus === 0 ? theme.orange : theme.red)
                         font.bold: true
                         font.pixelSize: 13
                         Layout.alignment: Qt.AlignRight
                     }
 
-                    Text { text: "Score:"; color: theme.muted; font.pixelSize: 13 }
+                    Rectangle {
+                        Layout.columnSpan: 2
+                        Layout.fillWidth: true
+                        height: 1
+                        color: theme.selection
+                    }
+
+                    Text { text: "Total Score:"; color: theme.muted; font.pixelSize: 14; font.bold: true }
                     Text {
-                        text: root.finalPoints.toLocaleString();
+                        text: "★ " + root.finalPoints.toLocaleString();
                         color: theme.yellow;
                         font.bold: true;
-                        font.pixelSize: 16;
+                        font.pixelSize: 18;
                         Layout.alignment: Qt.AlignRight
                     }
 

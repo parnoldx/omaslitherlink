@@ -8,6 +8,7 @@ Item {
 
     signal startGame(string difficultyKey)
     signal resumeGame()
+    signal openTutorial()
 
     property int scoresTick: 0
 
@@ -25,6 +26,46 @@ Item {
             if (root.visible)
                 root.scoresTick++
         }
+    }
+
+    // Help / Interactive Tutorial Button (top-left)
+    Rectangle {
+        id: helpBtn
+        z: 50
+        anchors.left: parent.left
+        anchors.top: parent.top
+        anchors.margins: 18
+        width: 42
+        height: 42
+        radius: 21
+        color: helpMouseArea.pressed ? theme.selection :
+               helpMouseArea.containsMouse ? theme.lighterBackground : theme.darkBackground
+        border.color: helpMouseArea.containsMouse ? theme.accent : theme.selection
+        border.width: helpMouseArea.containsMouse ? 2 : 1
+
+        Behavior on color { ColorAnimation { duration: 120 } }
+        Behavior on border.color { ColorAnimation { duration: 120 } }
+
+        Text {
+            anchors.centerIn: parent
+            text: "?"
+            font.pixelSize: 20
+            font.bold: true
+            font.family: "JetBrainsMono Nerd Font, Liberation Sans, monospace"
+            color: helpMouseArea.containsMouse ? theme.accent : theme.lightForeground
+        }
+
+        MouseArea {
+            id: helpMouseArea
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.openTutorial()
+        }
+
+        ToolTip.visible: helpMouseArea.containsMouse
+        ToolTip.delay: 350
+        ToolTip.text: "How to Play • Interactive Tutorial"
     }
 
     Flickable {
@@ -80,6 +121,8 @@ Item {
                             ctx.lineTo(w * 0.5, h * 0.8);
                             ctx.lineTo(w * 0.2, h * 0.8);
                             ctx.closePath();
+                            ctx.fillStyle = Qt.rgba(theme.accent.r, theme.accent.g, theme.accent.b, 0.12);
+                            ctx.fill();
                             ctx.stroke();
 
                             // Corner dots
@@ -91,7 +134,7 @@ Item {
                                 [w * 0.5, h * 0.5, theme.yellow],
                                 [w * 0.8, h * 0.5, theme.orange],
                                 [w * 0.2, h * 0.8, theme.magenta],
-                                [w * 0.5, h * 0.8, theme.selection],
+                                [w * 0.5, h * 0.8, theme.green],
                                 [w * 0.8, h * 0.8, theme.selection]
                             ];
 
@@ -190,10 +233,10 @@ Item {
 
                 Repeater {
                     model: [
-                        { key: "simple", name: "Easy", size: "5×5", clues: "~12 clues", factor: "x28", color: theme.green, desc: "Relaxed 5×5 grid, great for quick sessions" },
-                        { key: "medium", name: "Medium", size: "7×7", clues: "~22 clues", factor: "x56", color: theme.cyan, desc: "Balanced 7×7 challenge for regular players" },
-                        { key: "hard", name: "Hard", size: "10×10", clues: "~45 clues", factor: "x112", color: theme.orange, desc: "10×10 grid with intricate deduction patterns" },
-                        { key: "master", name: "Master", size: "15×15", clues: "~90 clues", factor: "x156", color: theme.magenta, desc: "Expansive 15×15 puzzle for loop masters" }
+                        { key: "simple", name: "Easy", size: "7×7", clues: "~22 clues", badge: "Par 03:00", color: theme.green, desc: "Relaxed 7×7 grid, accessible deductions" },
+                        { key: "medium", name: "Medium", size: "10×10", clues: "~45 clues", badge: "Par 07:00", color: theme.cyan, desc: "Balanced 10×10 challenge with intricate patterns" },
+                        { key: "hard", name: "Hard", size: "15×15", clues: "~95 clues", badge: "Par 15:00", color: theme.orange, desc: "Expansive 15×15 grid demanding loop analysis" },
+                        { key: "master", name: "Master", size: "20×20", clues: "~160 clues", badge: "Par 25:00", color: theme.magenta, desc: "Epic 20×20 grid for grandmasters; really hard" }
                     ]
 
                     Rectangle {
@@ -237,16 +280,16 @@ Item {
 
                                 Item { Layout.fillWidth: true }
 
-                                // Factor badge
+                                // Par badge
                                 Rectangle {
                                     implicitHeight: 22
-                                    implicitWidth: factorTxt.implicitWidth + 12
+                                    implicitWidth: badgeTxt.implicitWidth + 12
                                     radius: 11
                                     color: Qt.rgba(modelData.color.r, modelData.color.g, modelData.color.b, 0.2)
                                     Text {
-                                        id: factorTxt
+                                        id: badgeTxt
                                         anchors.centerIn: parent
-                                        text: modelData.factor
+                                        text: modelData.badge
                                         font.pixelSize: 11
                                         font.bold: true
                                         color: modelData.color
@@ -342,8 +385,8 @@ Item {
 
                         ColumnLayout {
                             spacing: 2
-                            Text { text: "Shortcuts & Undo"; font.pixelSize: 11; font.bold: true; color: theme.foreground }
-                            Text { text: "Click '0' to auto-cross • U: Undo • Esc: Menu"; font.pixelSize: 11; color: theme.muted }
+                            Text { text: "Shortcuts & Menu"; font.pixelSize: 11; font.bold: true; color: theme.foreground }
+                            Text { text: "P: Pause • Esc: Menu"; font.pixelSize: 11; color: theme.muted }
                         }
                     }
                 }

@@ -18,9 +18,9 @@ ApplicationWindow {
 
     Shortcut {
         sequence: "Escape"
-        enabled: window.currentView === "game"
+        enabled: window.currentView === "game" || window.currentView === "tutorial"
         onActivated: {
-            game.returnToMenu();
+            if (window.currentView === "game") game.returnToMenu();
             window.currentView = "welcome";
         }
     }
@@ -32,10 +32,10 @@ ApplicationWindow {
         // Header Bar
         HeaderBar {
             id: headerBar
-            visible: window.currentView !== "welcome"
+            visible: window.currentView !== "welcome" && window.currentView !== "tutorial"
             Layout.fillWidth: true
-            Layout.preferredHeight: window.currentView === "welcome" ? 0 : 68
-            Layout.minimumHeight: window.currentView === "welcome" ? 0 : 68
+            Layout.preferredHeight: (window.currentView === "welcome" || window.currentView === "tutorial") ? 0 : 68
+            Layout.minimumHeight: (window.currentView === "welcome" || window.currentView === "tutorial") ? 0 : 68
             onGoHome: {
                 game.returnToMenu();
                 window.currentView = "welcome";
@@ -56,6 +56,10 @@ ApplicationWindow {
                 id: welcomeView
                 anchors.fill: parent
                 visible: window.currentView === "welcome"
+                onOpenTutorial: {
+                    window.currentView = "tutorial";
+                    tutorialView.forceActiveFocus();
+                }
                 onStartGame: function(diffKey) {
                     game.startNewGame(diffKey);
                     window.currentView = "game";
@@ -63,6 +67,21 @@ ApplicationWindow {
                 }
                 onResumeGame: {
                     game.resumeGame();
+                    window.currentView = "game";
+                    boardView.forceActiveFocus();
+                }
+            }
+
+            // Tutorial View
+            TutorialView {
+                id: tutorialView
+                anchors.fill: parent
+                visible: window.currentView === "tutorial"
+                onExitTutorial: {
+                    window.currentView = "welcome";
+                }
+                onStartGame: function(diffKey) {
+                    game.startNewGame(diffKey);
                     window.currentView = "game";
                     boardView.forceActiveFocus();
                 }
@@ -99,12 +118,16 @@ ApplicationWindow {
     Connections {
         target: game
 
-        function onGameWon(points, fails, highscore, isNewRecord) {
+        function onGameWon(points, fails, highscore, isNewRecord, basePoints, timeBonus, mistakeBonus, parTimeStr) {
             winView.finalPoints = points;
             winView.finalFails = fails;
             winView.currentHighscore = highscore;
             winView.isRecord = isNewRecord;
             winView.finalTime = game.formattedTime;
+            winView.basePoints = basePoints;
+            winView.timeBonus = timeBonus;
+            winView.mistakeBonus = mistakeBonus;
+            winView.parTimeStr = parTimeStr;
             window.currentView = "win";
         }
     }

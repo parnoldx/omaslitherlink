@@ -571,6 +571,30 @@ summary {
   font-size: 11px;
 }
 
+/* Slitherlink board */
+.slitherlink-board {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  margin: 0 auto;
+  align-self: center;
+}
+
+.slitherlink-board svg {
+  width: auto;
+  height: 100%;
+  max-height: 245px;
+  aspect-ratio: 1 / 1;
+  border-radius: 6px;
+  background: #151620;
+  border: 1px solid var(--line);
+  display: block;
+}
+
 /* Sudoku board */
 .sudoku-board {
   flex: 1 1 auto;

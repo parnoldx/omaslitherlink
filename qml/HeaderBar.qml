@@ -56,17 +56,6 @@ Rectangle {
             spacing: 6
             visible: game.inGame
 
-            // Undo Button
-            CustomButton {
-                iconName: "undo"
-                text: ""
-                fontSize: 14
-                implicitHeight: 44
-                implicitWidth: 44
-                radius: 12
-                onClicked: game.undo()
-            }
-
             // Pause Button
             CustomButton {
                 iconName: game.isPaused ? "play" : "pause"
@@ -124,51 +113,37 @@ Rectangle {
                     }
                 }
 
-                // Multiplier Badge
+                // Difficulty & Par Badge
                 Rectangle {
-                    id: factorBadge
+                    id: diffBadge
                     implicitHeight: 44
-                    implicitWidth: factorRow.implicitWidth + 22
+                    implicitWidth: diffRow.implicitWidth + 22
                     radius: 22
                     color: Qt.rgba(theme.cyan.r, theme.cyan.g, theme.cyan.b, 0.18)
                     border.color: Qt.rgba(theme.cyan.r, theme.cyan.g, theme.cyan.b, 0.6)
                     border.width: 2
 
                     Row {
-                        id: factorRow
+                        id: diffRow
                         anchors.centerIn: parent
-                        spacing: 4
+                        spacing: 6
                         Text {
-                            text: "×"
-                            font.pixelSize: 16
+                            text: game.difficultyLabel
+                            font.pixelSize: 15
                             font.bold: true
                             color: theme.cyan
                             anchors.verticalCenter: parent.verticalCenter
                         }
                         Text {
-                            text: game.factor.toString()
-                            font.pixelSize: 17
-                            font.bold: true
-                            color: theme.cyan
+                            text: "Par " + game.formattedParTime
+                            font.pixelSize: 12
+                            color: Qt.rgba(theme.cyan.r, theme.cyan.g, theme.cyan.b, 0.8)
                             anchors.verticalCenter: parent.verticalCenter
                         }
-                    }
-
-                    Connections {
-                        target: game
-                        function onFactorChanged() {
-                            factorPulseAnim.restart();
-                        }
-                    }
-
-                    SequentialAnimation {
-                        id: factorPulseAnim
-                        PropertyAnimation { target: factorBadge; property: "scale"; to: 1.15; duration: 120 }
-                        PropertyAnimation { target: factorBadge; property: "scale"; to: 1.0; duration: 180 }
                     }
                 }
 
-                // Fails / Series Badge
+                // Mistakes & Accuracy Badge
                 Rectangle {
                     implicitHeight: 44
                     implicitWidth: failsRow.implicitWidth + 24
@@ -193,13 +168,13 @@ Rectangle {
                         Text {
                             text: {
                                 var isNarrow = root.width < 660;
-                                if (game.fails === 0) return isNarrow ? "✓ 0" : "✓ Perfect";
-                                if (game.fails === 1) return isNarrow ? "✗ 1" : "✗ 1 Fail";
-                                if (game.fails === 2) return isNarrow ? "✗ 2" : "✗ 2 Fails";
-                                if (game.fails === 3) return isNarrow ? "✗ 3" : "✗ 3 Fails";
-                                return isNarrow ? "⚡ " + game.fails : "⚡ BROKEN (" + game.fails + ")";
+                                if (game.fails === 0) return isNarrow ? "★ Clean" : "★ Flawless (+2.5k)";
+                                if (game.fails === 1) return isNarrow ? "✗ 1" : "✗ 1 Fail (+1k)";
+                                if (game.fails === 2) return isNarrow ? "✗ 2" : "✗ 2 Fails (+300)";
+                                if (game.fails === 3) return isNarrow ? "✗ 3" : "✗ 3 Fails (+0)";
+                                return isNarrow ? "⚡ " + game.fails : "⚡ -" + ((game.fails - 3) * 500) + " (" + game.fails + " Fails)";
                             }
-                            font.pixelSize: 15
+                            font.pixelSize: 14
                             font.bold: true
                             color: {
                                 if (game.fails > 3) return theme.red;

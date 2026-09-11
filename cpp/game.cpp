@@ -17,8 +17,8 @@ SlitherlinkGame::SlitherlinkGame(StorageManager *storage, QObject *parent)
         m_ownsStorage = true;
     }
 
-    m_grid.rows = 5;
-    m_grid.cols = 5;
+    m_grid.rows = 7;
+    m_grid.cols = 7;
     m_clues.fill(-1, m_grid.numCells());
     m_solution.fill(0, m_grid.numEdges());
     m_edges.fill(0, m_grid.numEdges());
@@ -38,12 +38,9 @@ void SlitherlinkGame::onSecondTick()
     if (m_isPaused || !m_inGame)
         return;
     ++m_time;
+    m_points = calculateScore(m_time, m_fails);
     emit timeChanged();
-
-    if (m_time % TIME_FACTOR_REDUCE == 0 && m_factor > 1) {
-        --m_factor;
-        emit factorChanged();
-    }
+    emit scoreChanged();
 }
 
 void SlitherlinkGame::startNewGame(const QString &difficultyKey)
@@ -56,12 +53,11 @@ void SlitherlinkGame::startNewGame(const QString &difficultyKey)
     m_clues = p.clues;
     m_solution = p.solution;
     m_edges.fill(0, m_grid.numEdges());
-    m_history.clear();
 
-    m_factor = m_difficulty.factor;
-    m_points = 0;
+    m_factor = 1;
     m_time = 0;
     m_fails = 0;
+    m_points = calculateScore(m_time, m_fails);
     m_isPaused = false;
     m_inGame = true;
     m_cursorEdge = 0;
@@ -115,7 +111,6 @@ void SlitherlinkGame::resumeGame()
     m_cursorEdge = 0;
     m_isPaused = false;
     m_inGame = true;
-    m_history.clear();
 
     m_timer.start();
 
@@ -226,16 +221,10 @@ void SlitherlinkGame::toggleEdge(int edgeIdx, int requestedState)
     if (target == 1) {
         // Trying to set Line
         if (m_solution[edgeIdx] == 1) {
-            int pts = POINTS_LINE * m_factor;
-            SlitherlinkHistoryEntry entry{edgeIdx, curr, pts};
-            m_history.append(entry);
-
             m_edges[edgeIdx] = 1;
-            m_points += pts;
 
             emit edgeFlash(edgeIdx, true);
             emit edgesChanged();
-            emit scoreChanged();
 
             checkCellCompletions(edgeIdx);
 
@@ -246,43 +235,72 @@ void SlitherlinkGame::toggleEdge(int edgeIdx, int requestedState)
             }
         } else {
             ++m_fails;
+            m_points = calculateScore(m_time, m_fails);
             emit failsChanged();
+            emit scoreChanged();
             emit edgeFlash(edgeIdx, false);
         }
     } else if (target == 2) {
-        // Trying to set Cross
-        if (m_solution[edgeIdx] == 1) {
-            // Cannot cross a solution line!
-            ++m_fails;
-            emit failsChanged();
-            emit edgeFlash(edgeIdx, false);
-        } else {
-            SlitherlinkHistoryEntry entry{edgeIdx, curr, 0};
-            m_history.append(entry);
+        // Setting Cross (pencil mark / elimination scratchpad) - always allowed without penalty!
+        m_edges[edgeIdx] = 2;
 
-            m_edges[edgeIdx] = 2;
-            emit edgeFlash(edgeIdx, true);
-            emit edgesChanged();
-            save_current_state();
-        }
+        emit edgeFlash(edgeIdx, true);
+        emit edgesChanged();
+        save_current_state();
     } else {
         // Clearing to Empty
-        int ptsDeducted = (curr == 1) ? POINTS_LINE * m_factor : 0;
-        SlitherlinkHistoryEntry entry{edgeIdx, curr, -ptsDeducted};
-        m_history.append(entry);
-
         m_edges[edgeIdx] = 0;
-        m_points = qMax(0, m_points - ptsDeducted);
 
         emit edgesChanged();
-        emit scoreChanged();
         save_current_state();
     }
 }
 
 void SlitherlinkGame::setEdgeState(int edgeIdx, int state)
 {
-    toggleEdge(edgeIdx, state);
+    if (!m_inGame || m_isPaused || edgeIdx < 0 || edgeIdx >= m_grid.numEdges())
+        return;
+
+    const int curr = m_edges[edgeIdx];
+    if (curr == state)
+        return; // Idempotent: already in requested state, don't toggle off during drag!
+
+    m_cursorEdge = edgeIdx;
+    emit cursorChanged();
+
+    if (state == 1) {
+        if (m_solution[edgeIdx] == 1) {
+            m_edges[edgeIdx] = 1;
+
+            emit edgeFlash(edgeIdx, true);
+            emit edgesChanged();
+
+            checkCellCompletions(edgeIdx);
+
+            if (is_finished()) {
+                onWon();
+            } else {
+                save_current_state();
+            }
+        } else {
+            ++m_fails;
+            m_points = calculateScore(m_time, m_fails);
+            emit failsChanged();
+            emit scoreChanged();
+            emit edgeFlash(edgeIdx, false);
+        }
+    } else if (state == 2) {
+        m_edges[edgeIdx] = 2;
+
+        emit edgeFlash(edgeIdx, true);
+        emit edgesChanged();
+        save_current_state();
+    } else if (state == 0) {
+        m_edges[edgeIdx] = 0;
+
+        emit edgesChanged();
+        save_current_state();
+    }
 }
 
 void SlitherlinkGame::clickCellClue(int row, int col)
@@ -301,7 +319,6 @@ void SlitherlinkGame::clickCellClue(int row, int col)
         for (int e : cellEdges) {
             if (m_edges[e] == 0) {
                 m_edges[e] = 2;
-                m_history.append({e, 0, 0});
                 changed = true;
             }
         }
@@ -323,7 +340,6 @@ void SlitherlinkGame::clickCellClue(int row, int col)
         for (int e : cellEdges) {
             if (m_edges[e] == 0) {
                 m_edges[e] = 2;
-                m_history.append({e, 0, 0});
                 changed = true;
             }
         }
@@ -350,10 +366,7 @@ void SlitherlinkGame::checkCellCompletions(int edgeIdx)
             if (m_edges[e] == 1) ++lineCount;
         }
         if (lineCount == clue) {
-            const int bonus = (clue + 1) * POINTS_CELL_COMPLETE * m_factor;
-            m_points += bonus;
             emit cellCompleted(r, c);
-            emit scoreChanged();
 
             // Auto-cross remaining empty edges around satisfied clue cell
             for (int e : ce) {
@@ -403,24 +416,6 @@ void SlitherlinkGame::moveCursor(int dRow, int dCol)
     emit cursorChanged();
 }
 
-void SlitherlinkGame::undo()
-{
-    if (m_history.isEmpty())
-        return;
-
-    const auto last = m_history.takeLast();
-    if (last.edgeIdx >= 0 && last.edgeIdx < m_grid.numEdges()) {
-        m_edges[last.edgeIdx] = last.prevState;
-        m_points = qMax(0, m_points - last.pointsAdded);
-        m_cursorEdge = last.edgeIdx;
-
-        emit edgesChanged();
-        emit scoreChanged();
-        emit cursorChanged();
-        save_current_state();
-    }
-}
-
 bool SlitherlinkGame::is_finished() const
 {
     return SlitherlinkEngine::isWinState(m_grid, m_clues, m_edges);
@@ -438,12 +433,12 @@ void SlitherlinkGame::onWon()
     m_storage->deleteSavedGame();
     emit canResumeChanged();
 
-    bool isNewRecord = false;
-    if (m_fails <= 3)
-        isNewRecord = m_storage->setHighscore(m_difficulty.key, m_points);
+    m_points = calculateScore(m_time, m_fails);
 
+    bool isNewRecord = m_storage->setHighscore(m_difficulty.key, m_points);
     const int currentHs = m_storage->getHighscore(m_difficulty.key);
-    emit gameWon(m_points, m_fails, currentHs, isNewRecord);
+
+    emit gameWon(m_points, m_fails, currentHs, isNewRecord, basePoints(), timeBonus(), mistakeBonus(), formattedParTime());
     emit gameStateChanged();
 }
 
@@ -485,4 +480,93 @@ int SlitherlinkGame::highscore() const
 int SlitherlinkGame::getHighscoreFor(const QString &diffKey) const
 {
     return m_storage->getHighscore(diffKey);
+}
+
+int SlitherlinkGame::points() const
+{
+    return calculateScore(m_time, m_fails);
+}
+
+int SlitherlinkGame::basePoints() const
+{
+    const QString k = m_difficulty.key.toLower();
+    if (k == QStringLiteral("simple") || k == QStringLiteral("easy"))
+        return 8000;
+    if (k == QStringLiteral("medium") || k == QStringLiteral("intermediate"))
+        return 20000;
+    if (k == QStringLiteral("hard") || k == QStringLiteral("expert"))
+        return 50000;
+    if (k == QStringLiteral("master"))
+        return 100000;
+    return 8000;
+}
+
+int SlitherlinkGame::parTime() const
+{
+    const QString k = m_difficulty.key.toLower();
+    if (k == QStringLiteral("simple") || k == QStringLiteral("easy"))
+        return 180; // 3:00
+    if (k == QStringLiteral("medium") || k == QStringLiteral("intermediate"))
+        return 420; // 7:00
+    if (k == QStringLiteral("hard") || k == QStringLiteral("expert"))
+        return 900; // 15:00
+    if (k == QStringLiteral("master"))
+        return 1500; // 25:00
+    return 180;
+}
+
+QString SlitherlinkGame::formattedParTime() const
+{
+    const int p = parTime();
+    return QStringLiteral("%1:%2")
+        .arg(p / 60, 2, 10, QLatin1Char('0'))
+        .arg(p % 60, 2, 10, QLatin1Char('0'));
+}
+
+int SlitherlinkGame::timeBonus() const
+{
+    const int par = parTime();
+    if (m_time >= par)
+        return 0;
+    const int diff = par - m_time;
+    const QString k = m_difficulty.key.toLower();
+    int rate = 25;
+    if (k == QStringLiteral("medium") || k == QStringLiteral("intermediate")) rate = 35;
+    else if (k == QStringLiteral("hard") || k == QStringLiteral("expert")) rate = 45;
+    else if (k == QStringLiteral("master")) rate = 60;
+    return diff * rate;
+}
+
+int SlitherlinkGame::mistakeBonus() const
+{
+    if (m_fails == 0) return 2500;
+    if (m_fails == 1) return 1000;
+    if (m_fails == 2) return 300;
+    if (m_fails == 3) return 0;
+    return -(m_fails - 3) * 500;
+}
+
+int SlitherlinkGame::calculateScore(int timeSeconds, int failsCount) const
+{
+    const int base = basePoints();
+    const int par = parTime();
+    int tBonus = 0;
+    if (timeSeconds < par) {
+        const int diff = par - timeSeconds;
+        const QString k = m_difficulty.key.toLower();
+        int rate = 25;
+        if (k == QStringLiteral("medium") || k == QStringLiteral("intermediate")) rate = 35;
+        else if (k == QStringLiteral("hard") || k == QStringLiteral("expert")) rate = 45;
+        else if (k == QStringLiteral("master")) rate = 60;
+        tBonus = diff * rate;
+    }
+
+    int mBonus = 0;
+    if (failsCount == 0) mBonus = 2500;
+    else if (failsCount == 1) mBonus = 1000;
+    else if (failsCount == 2) mBonus = 300;
+    else if (failsCount == 3) mBonus = 0;
+    else mBonus = -(failsCount - 3) * 500;
+
+    return qMax(100, base + tBonus + mBonus);
 }
