@@ -28,7 +28,7 @@ Item {
         }
     }
 
-    // Help / Interactive Tutorial Button (top-left)
+    // Help / Tutorial Button (top-left)
     Rectangle {
         id: helpBtn
         z: 50
@@ -65,7 +65,7 @@ Item {
 
         ToolTip.visible: helpMouseArea.containsMouse
         ToolTip.delay: 350
-        ToolTip.text: "How to Play • Interactive Tutorial"
+        ToolTip.text: "Tutorial"
     }
 
     Flickable {

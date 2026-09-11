@@ -308,7 +308,7 @@ Item {
                 Item { Layout.fillWidth: true }
 
                 Text {
-                    text: "INTERACTIVE TUTORIAL"
+                    text: "TUTORIAL"
                     font.pixelSize: 15
                     font.bold: true
                     font.letterSpacing: 2

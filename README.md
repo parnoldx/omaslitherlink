@@ -13,7 +13,7 @@ A native Slitherlink arcade puzzle for **Omarchy**.
 - **Looks like Omarchy** — picks up your desktop theme and updates live when it changes.
 - **Arcade scoring** — four difficulties (Easy 7×7 to Master 20×20), par-time sprint bonuses, flawless loop rewards, and mistake penalties.
 - **Fluid controls** — drag-to-draw lines (left mouse), drag crosses (right mouse), auto-cross 0s and satisfied clues with a single click, or play keyboard-first with an edge cursor.
-- **Interactive tutorial** — built-in hands-on guide accessible from the '?' button on the welcome screen with 5 progressive lessons (loop rules, 0-clue crossing, 3-clues, vertex rules, and practice puzzle).
+- **Tutorial** — built-in hands-on guide accessible from the '?' button on the welcome screen with 5 progressive lessons (loop rules, 0-clue crossing, 3-clues, vertex rules, and practice puzzle).
 - **Pick up later** — unfinished games resume; best scores per difficulty.
 
 ---
