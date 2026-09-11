@@ -17,8 +17,8 @@ Item {
     // Lesson model definitions
     readonly property var lessons: [
         {
-            title: "The Single Closed Loop",
-            subtitle: "Rule 1 · The Fundamental Objective",
+            title: "Single Closed Loop",
+            subtitle: "Rule 1 · Objective",
             rows: 2,
             cols: 2,
             clues: [-1, -1, -1, -1],
@@ -28,26 +28,26 @@ Item {
             initialEdges: [0, 1, 0, 0, 1, 1, 1, 0, 1, 1, 0, 1],
             hintEdge: 0,
             hintCell: -1,
-            explanation: "Slitherlink is solved by drawing horizontal and vertical line segments between dots to form **one continuous closed loop**.\n\n• The loop can **never branch** or form crossroads.\n• The loop can **never leave loose ends**.",
-            taskPrompt: "Click the pulsing top-left edge to connect the dots and close the loop!",
-            successText: "Loop closed! Notice how every single dot on the loop connects exactly two lines (one in, one out)."
+            explanation: "Connect dots with line segments to form **one closed loop**.\n\n• No branches or intersections\n• No loose ends\n• Every visited dot connects exactly two lines",
+            taskPrompt: "Click the open edge to close the loop.",
+            successText: "Loop closed. Every dot on the loop connects exactly two lines."
         },
         {
-            title: "Empty Space & The '0' Clue",
-            subtitle: "Rule 2 · Number Clues & Crosses",
+            title: "The '0' Clue",
+            subtitle: "Rule 2 · Clues & Crosses",
             rows: 2,
             cols: 2,
             clues: [0, -1, -1, -1],
             initialEdges: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             hintEdge: -1,
             hintCell: 0,
-            explanation: "A number clue inside a cell tells you how many of its four borders are part of the loop.\n\nA **0** means **ZERO** lines touch this cell. None of its borders can ever be part of the loop!\n\nUse **right-click** (or click the '0' directly) to mark borders with an **×** cross so you never draw there by accident.",
-            taskPrompt: "Click the '0' clue (or right-click its 4 borders) to cross them all out!",
-            successText: "All 4 borders sealed! Marking impossible edges with crosses reveals where the loop is forced to go."
+            explanation: "Numbers show how many cell edges belong to the loop (0–3).\n\n**0** means none of its edges can be lines.\n\nMark unused edges with **×** (right-click, or click the '0') to rule them out.",
+            taskPrompt: "Click the '0' or right-click its four edges to cross them out.",
+            successText: "Edges crossed out. Eliminating edges reveals where the loop must go."
         },
         {
-            title: "The '3' Clue & Blocked Borders",
-            subtitle: "Rule 3 · Eliminating Options",
+            title: "The '3' Clue",
+            subtitle: "Rule 3 · Deduction",
             rows: 2,
             cols: 2,
             clues: [3, -1, -1, -1],
@@ -58,13 +58,13 @@ Item {
             initialEdges: [0, 2, 2, 1, 1, 1, 0, 0, 2, 1, 2, 1],
             hintEdge: -1,
             hintCell: 0,
-            explanation: "A **3** clue means exactly three of its four borders must be loop lines.\n\nNotice that the bottom border is already crossed out with an **×**. Because only 3 borders remain, all three **MUST** be lines!\n\nNotice how drawing these lines connects dots cleanly: at the top-left corner dot, the top and left lines turn smoothly together (degree 2) without dead ends.",
-            taskPrompt: "Click the 3 open borders (left, top, right) around the '3' to complete the loop.",
-            successText: "Outstanding! All three lines connected cleanly. Notice how the corner dot has exactly 2 lines meeting — no dead ends!"
+            explanation: "A **3** requires three lines around the cell.\n\nIf one edge is crossed out, the remaining three edges must be lines.",
+            taskPrompt: "Click the three open edges around the '3'.",
+            successText: "Lines placed. The corner dot connects two edges without branching."
         },
         {
-            title: "Vertex Connections",
-            subtitle: "Rule 4 · Line-In, Line-Out",
+            title: "Dot Continuity",
+            subtitle: "Rule 4 · In & Out",
             rows: 3,
             cols: 3,
             clues: [-1, -1, -1, -1, -1, -1, -1, -1, -1],
@@ -87,13 +87,13 @@ Item {
             ],
             hintEdge: 4,
             hintCell: -1,
-            explanation: "At every dot touched by the loop, **exactly 2 lines** must meet: one coming in, one going out.\n\n• A dot can **never have 1 line** (a dead end).\n• A dot can **never have 3 or 4 lines** (no intersections).\n\nSince the path arrives at the center dot from the left and up/down are blocked, it **must** continue to the right!",
-            taskPrompt: "Click the open edge leaving the dot to route the loop forward.",
-            successText: "Great deduction! The 'line-in, line-out' rule lets you trace long paths with complete certainty."
+            explanation: "Every dot touched by the loop must have **exactly two lines**:\n\n• No dead ends (1 line)\n• No forks (3 or 4 lines)\n\nIf a path enters a dot and other directions are blocked, it must exit through the only open edge.",
+            taskPrompt: "Click the open edge leaving the dot.",
+            successText: "Path continued. A line entering a dot must always leave it."
         },
         {
-            title: "Solve Your First Mini-Puzzle!",
-            subtitle: "Rule 5 · Put It All Together",
+            title: "Complete Puzzle",
+            subtitle: "Rule 5 · Solve 3×3",
             rows: 3,
             cols: 3,
             // 3x3 verified unique puzzle
@@ -113,9 +113,9 @@ Item {
             ],
             hintEdge: -1,
             hintCell: -1,
-            explanation: "Combine all your deductions to solve this complete 3×3 Slitherlink puzzle!\n\n1. Cross out the borders around the **0**s.\n2. Identify the corner **3**s and draw their lines.\n3. Connect lines at dots so every visited vertex has degree 2 until the loop is closed!",
-            taskPrompt: "Draw lines and place crosses to solve the entire mini-puzzle!",
-            successText: "TUTORIAL COMPLETED! You've mastered all the core rules of Slitherlink. You're ready to tackle the grid!"
+            explanation: "Apply the rules to solve the 3×3 grid:\n\n1. Cross out edges around **0**s\n2. Fill lines around **3**s\n3. Extend lines through dots until the loop closes",
+            taskPrompt: "Draw lines and mark crosses to complete the loop.",
+            successText: "Puzzle solved. You are ready to play."
         }
     ]
 
@@ -846,7 +846,7 @@ Item {
                                     RowLayout {
                                         spacing: 8
                                         Text {
-                                            text: root.stepCompleted ? "✓ OBJECTIVE MET" : "🎯 YOUR TASK"
+                                            text: root.stepCompleted ? "✓ COMPLETE" : "TASK"
                                             font.pixelSize: 12
                                             font.bold: true
                                             color: root.stepCompleted ? theme.green : theme.accent
@@ -885,7 +885,7 @@ Item {
 
                                 CustomButton {
                                     visible: root.currentStep < root.lessons.length - 1
-                                    text: "Next Lesson →"
+                                    text: "Next →"
                                     fontSize: 13
                                     implicitHeight: 42
                                     Layout.fillWidth: true
@@ -897,7 +897,7 @@ Item {
 
                                 CustomButton {
                                     visible: root.currentStep === root.lessons.length - 1
-                                    text: "Start Easy (7×7) Game"
+                                    text: "Play Easy (7×7)"
                                     fontSize: 14
                                     implicitHeight: 42
                                     Layout.fillWidth: true
